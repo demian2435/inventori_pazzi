@@ -33,6 +33,27 @@ FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" wid
 
 SESSION_SECRET = os.getenv("SESSION_SECRET") or secrets.token_urlsafe(32)
 
+ALLOWED_AVATAR_MIME_TYPES = (
+    "data:image/jpeg;base64,",
+    "data:image/png;base64,",
+    "data:image/webp;base64,",
+)
+MAX_AVATAR_LEN = 150 * 1024  # Max ~150 KB per Base64 payload
+
+
+def is_safe_avatar(data: str) -> bool:
+    if not data or not isinstance(data, str):
+        return False
+    data = data.strip()
+    if len(data) > MAX_AVATAR_LEN:
+        return False
+    if not any(data.startswith(prefix) for prefix in ALLOWED_AVATAR_MIME_TYPES):
+        return False
+    lowered = data.lower()
+    if "<svg" in lowered or "<script" in lowered or "xml" in lowered or "javascript:" in lowered:
+        return False
+    return True
+
 fastapi_app = FastAPI(title="Inventori Pazzi")
 fastapi_app.add_middleware(
     SessionMiddleware,
@@ -244,7 +265,7 @@ def generate_balanced_schedule(players: list) -> list[list]:
 
 
 
-def join_player_logic(room_code, player_name, player_id=None):
+def join_player_logic(room_code, player_name, player_id=None, avatar_data=None):
     player_name = (player_name or "").strip()
     room_code = (room_code or "").strip().upper()
     if not player_name:
@@ -282,6 +303,8 @@ def join_player_logic(room_code, player_name, player_id=None):
         if p["id"] != player_id and p["name"].lower() == player_name.lower():
             raise ValueError("Nome già in uso in questa stanza")
 
+    valid_avatar = avatar_data if (avatar_data and is_safe_avatar(avatar_data)) else None
+
     existing_player = next((p for p in room["players"] if p["id"] == player_id), None)
     if existing_player is None:
         existing_player = {
@@ -290,12 +313,14 @@ def join_player_logic(room_code, player_name, player_id=None):
             "isHost": not room["players"],
             "score": 0,
             "confirmedNext": False,
+            "avatar": valid_avatar,
         }
         room["players"].append(existing_player)
         if room["hostId"] is None:
             room["hostId"] = player_id
     else:
         existing_player["name"] = player_name
+        existing_player["avatar"] = valid_avatar
 
     return room, player_id, None
 
@@ -715,7 +740,17 @@ def flash_markup(flash):
     return f'<p class="notice {kind}">{e(flash.get("message"))}</p>'
 
 
-def avatar_markup(name):
+def avatar_markup(player_or_name):
+    if isinstance(player_or_name, dict):
+        avatar = player_or_name.get("avatar")
+        name = player_or_name.get("name", "I")
+    else:
+        avatar = None
+        name = str(player_or_name or "I")
+
+    if avatar and is_safe_avatar(avatar):
+        return f'<span class="avatar"><img src="{e(avatar)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" alt=""></span>'
+
     initial = (name or "I")[0].upper()
     return f'<span class="avatar">{e(initial)}</span>'
 
@@ -740,6 +775,13 @@ def render_home(request, flash):
       <p class="subtitle">Il party game multiplayer di invenzioni assurde e mercato spietato!</p>
       {flash_markup(flash)}
       <form action="/join" method="post">{csrf_input(token)}
+        <div style="text-align:center; margin-bottom:18px;">
+          <div id="avatar-preview" class="avatar" style="width:76px; height:76px; font-size:2.2rem; margin:0 auto 10px; border:2px dashed rgba(255,255,255,0.4); cursor:pointer; transition:all 0.2s;" title="Clicca per scegliere la foto">👤</div>
+          <button type="button" id="avatar-trigger-btn" class="button secondary" style="display:inline-block; width:auto; margin:0 auto; padding:6px 14px; font-size:0.85rem; cursor:pointer;">📷 Scegli Foto Profilo (opzionale)</button>
+          <input id="avatar_file" type="file" accept="image/*" style="display:none;">
+          <input id="avatar_data" type="hidden" name="avatar_data" value="">
+        </div>
+
         <label for="player_name">Il tuo Nome da Inventore</label>
         <input id="player_name" name="player_name" maxlength="20" required autofocus placeholder="es. Leonardo Da Vinci">
         
@@ -752,17 +794,70 @@ def render_home(request, flash):
     <script>
     (function() {{
       const nameInput = document.getElementById('player_name');
+      const avatarBtn = document.getElementById('avatar-trigger-btn');
+      const avatarPreview = document.getElementById('avatar-preview');
+      const avatarFileInput = document.getElementById('avatar_file');
+      const avatarDataInput = document.getElementById('avatar_data');
       const form = nameInput ? nameInput.closest('form') : null;
-      if (!nameInput) return;
 
-      const savedName = localStorage.getItem('inventore_pazzo_name');
-      if (savedName) {{
-        nameInput.value = savedName;
+      if (nameInput) {{
+        const savedName = localStorage.getItem('inventore_pazzo_name');
+        if (savedName) nameInput.value = savedName;
+      }}
+
+      const savedAvatar = localStorage.getItem('saved_player_avatar');
+      if (savedAvatar && avatarDataInput && avatarPreview) {{
+        avatarDataInput.value = savedAvatar;
+        avatarPreview.innerHTML = '<img src="' + savedAvatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">';
+        avatarPreview.style.border = '2px solid #fbbf24';
+      }}
+
+      function triggerPicker(e) {{
+        if (e) e.preventDefault();
+        if (avatarFileInput) avatarFileInput.click();
+      }}
+
+      if (avatarBtn) avatarBtn.addEventListener('click', triggerPicker);
+      if (avatarPreview) avatarPreview.addEventListener('click', triggerPicker);
+
+      if (avatarFileInput) {{
+        avatarFileInput.addEventListener('change', function(e) {{
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = function(event) {{
+            const img = new Image();
+            img.onload = function() {{
+              const canvas = document.createElement('canvas');
+              const size = 128;
+              canvas.width = size;
+              canvas.height = size;
+              const ctx = canvas.getContext('2d');
+
+              const minDim = Math.min(img.width, img.height);
+              const sx = (img.width - minDim) / 2;
+              const sy = (img.height - minDim) / 2;
+
+              ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+              if (avatarDataInput) avatarDataInput.value = compressedDataUrl;
+              if (avatarPreview) {{
+                avatarPreview.innerHTML = '<img src="' + compressedDataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">';
+                avatarPreview.style.border = '2px solid #fbbf24';
+              }}
+              localStorage.setItem('saved_player_avatar', compressedDataUrl);
+            }};
+            img.src = event.target.result;
+          }};
+          reader.readAsDataURL(file);
+        }});
       }}
 
       if (form) {{
         form.addEventListener('submit', function() {{
-          if (nameInput.value.trim()) {{
+          if (nameInput && nameInput.value.trim()) {{
             localStorage.setItem('inventore_pazzo_name', nameInput.value.trim());
           }}
         }});
@@ -781,7 +876,7 @@ def render_lobby(request, room, player, flash):
         host_badge = '<span class="badge">HOST</span>' if p["isHost"] else ""
         players_markup.append(
             f'<div class="player">'
-            f'<div class="player-info">{avatar_markup(p["name"])}<span class="player-name">{e(p["name"])}</span></div>'
+            f'<div class="player-info">{avatar_markup(p)}<span class="player-name">{e(p["name"])}</span></div>'
             f'{host_badge}</div>'
         )
 
@@ -934,7 +1029,7 @@ def render_voting(request, room, player, flash):
             f'<input type="hidden" name="target_id" value="{e(candidate["id"])}">'
             f'<button class="{selected_class}" type="submit">'
             f'<div style="display:flex; justify-content:space-between; align-items:center;">'
-            f'<span style="display:flex; align-items:center; gap:10px;">{avatar_markup(candidate["name"])} <strong>{e(candidate["name"])}</strong></span>'
+            f'<span style="display:flex; align-items:center; gap:10px;">{avatar_markup(candidate)} <strong>{e(candidate["name"])}</strong></span>'
             f'{selected_badge}'
             f'</div></button></form>'
         )
@@ -1026,7 +1121,7 @@ def render_round_result(request, room, player, flash):
         players_status_markup.append(
             f'<div class="result-card">'
             f'<div style="display:flex; justify-content:space-between; align-items:center;">'
-            f'<span style="display:flex; align-items:center; gap:10px;">{avatar_markup(p["name"])} <strong>{e(p["name"])}</strong></span>'
+            f'<span style="display:flex; align-items:center; gap:10px;">{avatar_markup(p)} <strong>{e(p["name"])}</strong></span>'
             f'{badge}</div>'
             f'</div>'
         )
@@ -1094,7 +1189,7 @@ def render_game_over(request, room, player, flash):
             f'<div class="player" style="padding:14px 18px; margin-bottom:8px;">'
             f'<div class="player-info">'
             f'<span style="font-size:1.3rem; font-weight:800; min-width:32px;">{medal}</span>'
-            f'{avatar_markup(p["name"])}'
+            f'{avatar_markup(p)}'
             f'<span class="player-name">{e(p["name"])}</span>'
             f'</div>'
             f'<span class="coin-badge" style="font-size:1.05rem;">🪙 {p["score"]} Monete</span>'
@@ -1270,6 +1365,7 @@ async def join_room(
     request: Request,
     player_name: str = Form(""),
     room_code: str = Form(""),
+    avatar_data: str = Form(""),
     csrf_token_value: str = Form("", alias="csrf_token"),
 ):
     check_csrf(request, csrf_token_value)
@@ -1289,6 +1385,7 @@ async def join_room(
             desired_room_code,
             player_name,
             player_id,
+            avatar_data=avatar_data,
         )
         notify_room(room["code"])
     except ValueError as exc:

@@ -430,5 +430,44 @@ class TestLeaveRoomLogic(unittest.TestCase):
         self.assertNotIn(code, rooms)
 
 
+class TestAvatarSecurity(unittest.TestCase):
+    def setUp(self):
+        rooms.clear()
+
+    def test_valid_raster_images(self):
+        valid_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        valid_jpeg = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP"
+        room, p1, _ = join_player_logic("", "Player 1", avatar_data=valid_png)
+        self.assertEqual(room["players"][0]["avatar"], valid_png)
+
+        room, p2, _ = join_player_logic(room["code"], "Player 2", avatar_data=valid_jpeg)
+        self.assertEqual(room["players"][1]["avatar"], valid_jpeg)
+
+    def test_svg_vectors_rejected(self):
+        svg_avatar = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48L3N2Zz4="
+        room, p1, _ = join_player_logic("", "Player 1", avatar_data=svg_avatar)
+        self.assertIsNone(room["players"][0]["avatar"])
+
+    def test_oversized_avatar_rejected(self):
+        oversized = "data:image/png;base64," + ("A" * (200 * 1024))
+        room, p1, _ = join_player_logic("", "Player 1", avatar_data=oversized)
+        self.assertIsNone(room["players"][0]["avatar"])
+
+    def test_script_injection_rejected(self):
+        xss = "data:image/png;base64,<script>alert('xss')</script>"
+        room, p1, _ = join_player_logic("", "Player 1", avatar_data=xss)
+        self.assertIsNone(room["players"][0]["avatar"])
+
+    def test_rejoin_updates_avatar_coherently(self):
+        valid_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        room, p1_id, _ = join_player_logic("", "Player 1", avatar_data=valid_png)
+        self.assertEqual(room["players"][0]["avatar"], valid_png)
+
+        # Rejoining with invalid/empty avatar resets avatar to None consistently
+        invalid_svg = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+        room, _, _ = join_player_logic(room["code"], "Player 1", player_id=p1_id, avatar_data=invalid_svg)
+        self.assertIsNone(room["players"][0]["avatar"])
+
+
 if __name__ == "__main__":
     unittest.main()

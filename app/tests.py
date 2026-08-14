@@ -60,8 +60,10 @@ class TestBalancedSchedule(unittest.TestCase):
             self.assertEqual(len(row), 4)
             self.assertEqual(set(row), set(players))
 
-        # Base row for N=4: indices [0, 1, 3, 2] -> ['P0', 'P1', 'P3', 'P2']
-        self.assertEqual(schedule[0], ["P0", "P1", "P3", "P2"])
+        # Check that every player is in each position (column) exactly once
+        for col_idx in range(4):
+            col_players = [row[col_idx] for row in schedule]
+            self.assertEqual(set(col_players), set(players))
 
         # Check directed neighbor pairs in Williams Latin Square
         adjacent_pairs = set()
@@ -69,28 +71,22 @@ class TestBalancedSchedule(unittest.TestCase):
             for i in range(len(row) - 1):
                 adjacent_pairs.add((row[i], row[i + 1]))
 
-        # For N=4, there are 4 * 3 = 12 directed pairs. Each pair should appear exactly once.
         self.assertEqual(len(adjacent_pairs), 12)
 
     def test_generate_balanced_schedule_odd(self):
         players = ["P0", "P1", "P2"]
         schedule = generate_balanced_schedule(players)
 
-        # For N=3 (odd), there should be 2*N = 6 rows
-        self.assertEqual(len(schedule), 6)
-        for row in schedule:
-            self.assertEqual(len(row), 3)
-            self.assertEqual(set(row), set(players))
+        # For N=3, there should be N = 3 rows (rounds)
+        self.assertEqual(len(schedule), 3)
+        # Every player is 1st once, 2nd once, 3rd once
+        for col_idx in range(3):
+            col_players = [row[col_idx] for row in schedule]
+            self.assertEqual(set(col_players), set(players))
 
-        # First block of N=3 rows
         self.assertEqual(schedule[0], ["P0", "P1", "P2"])
-        self.assertEqual(schedule[1], ["P1", "P2", "P0"])
-        self.assertEqual(schedule[2], ["P2", "P0", "P1"])
-
-        # Second block of N=3 mirrored rows (from reversed base_row: [P2, P1, P0])
-        self.assertEqual(schedule[3], ["P2", "P1", "P0"])
-        self.assertEqual(schedule[4], ["P0", "P2", "P1"])
-        self.assertEqual(schedule[5], ["P1", "P0", "P2"])
+        self.assertEqual(schedule[1], ["P2", "P0", "P1"])
+        self.assertEqual(schedule[2], ["P1", "P2", "P0"])
 
     def test_generate_balanced_schedule_dicts(self):
         player_dicts = [
@@ -165,8 +161,8 @@ class TestStartGameLogic(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(room["status"], "pitching")
         self.assertEqual(room["roundNumber"], 1)
-        self.assertEqual(len(room["schedule"]), 6)  # N=3 (odd) -> 6 rows
-        self.assertEqual(room["totalRounds"], 6)
+        self.assertEqual(len(room["schedule"]), 3)  # N=3 -> 3 rounds
+        self.assertEqual(room["totalRounds"], 3)
         self.assertEqual(room["speakerOrder"], room["schedule"][0])
         self.assertTrue(len(room["currentProblem"]) > 0)
         self.assertEqual(len(room["currentWords"]), 1)

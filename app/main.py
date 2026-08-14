@@ -202,10 +202,10 @@ def generate_room_code():
 
 def generate_balanced_schedule(players: list) -> list[list]:
     """
-    Genera una matrice di turni bilanciata tramite Quadrato Latino Bilanciato (Algoritmo di Williams).
-    - Riga base: [0, 1, N-1, 2, N-2, 3, N-3, ...]
-    - Offset circolare per N righe: row[r] = [(val + r) % N for val in base_row]
-    - Se N è dispari: aggiunge un secondo blocco di N righe specchiate da reversed(base_row).
+    Genera una matrice di turni bilanciata per N giocatori (Quadrato Latino Perfetto).
+    - Numero di round = N (es. 3 round per 3 giocatori).
+    - Ciascun giocatore occupa ogni posizione (1°, 2°, 3° ... N-esimo) ESATTAMENTE 1 VOLTA.
+    - L'ordine dei relatori varia tra i vari round evitando di capitare sempre dietro al medesimo concorrente.
     """
     N = len(players)
     if N == 0:
@@ -220,19 +220,13 @@ def generate_balanced_schedule(players: list) -> list[list]:
         else:
             base_row.append(N - (i // 2))
 
-    matrix_indices = []
+    # Offsets: tutti i pari e poi tutti i dispari (es. [0, 2, 1] per N=3, [0, 2, 1, 3] per N=4)
+    row_offsets = list(range(0, N, 2)) + list(range(1, N, 2))
 
-    # Primo blocco: N righe con offset circolare
-    for r in range(N):
+    matrix_indices = []
+    for r in row_offsets:
         row = [(val + r) % N for val in base_row]
         matrix_indices.append(row)
-
-    # Se N è dispari, aggiungi secondo blocco di N righe da reversed(base_row)
-    if N % 2 != 0:
-        rev_base_row = list(reversed(base_row))
-        for r in range(N):
-            row = [(val + r) % N for val in rev_base_row]
-            matrix_indices.append(row)
 
     # Mappa gli indici sugli elementi di players (o sui loro 'id' se dict)
     schedule = []

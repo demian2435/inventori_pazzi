@@ -805,6 +805,7 @@ def render_pitching(request, room, player, flash):
         if pitch_state == "preparing":
             action_block = f"""
             <div class="speaker-turn-banner">🎤 È IL TUO TURNO DI PARLARE!</div>
+            <div id="timer-box" class="timer-display" style="opacity:0.75;">45</div>
             <p class="hint">Quando sei pronto a presentare la tua invenzione assurda, premi il pulsante per avviare i 45 secondi di timer!</p>
             <form action="/start-pitch" method="post">
               {csrf_input(token)}
@@ -824,7 +825,8 @@ def render_pitching(request, room, player, flash):
             <div class="speaker-turn-banner" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:#e2e8f0;">
               ⏳ <strong>{e(current_speaker["name"].upper())}</strong> SI STA PREPARANDO...
             </div>
-            <p class="hint">Attendi che l'inventore inizi la sua presentazione.</p>"""
+            <div id="timer-box" class="timer-display" style="opacity:0.5;">45</div>
+            <p class="hint">Attendi che l'inventore prema il pulsante di avvio per iniziare la sua presentazione.</p>"""
         else:
             action_block = f"""
             <div class="speaker-turn-banner">🎤 <strong>{e(current_speaker["name"].upper())}</strong> STA PRESENTANDO!</div>
@@ -834,16 +836,21 @@ def render_pitching(request, room, player, flash):
     # Timer JavaScript snippet
     timer_script = ""
     if pitch_state == "pitching" and pitch_start_time:
+        server_now = time.time()
         timer_script = f"""
         <script>
         (function() {{
           const startTime = {pitch_start_time};
+          const serverNow = {server_now};
           const duration = {duration};
+          const clientNow = Date.now() / 1000;
+          const clockOffset = clientNow - serverNow;
           const timerBox = document.getElementById('timer-box');
           if (!timerBox) return;
 
           function updateTimer() {{
-            const elapsed = Math.floor(Date.now() / 1000 - startTime);
+            const currentServerTime = Date.now() / 1000 - clockOffset;
+            const elapsed = Math.floor(currentServerTime - startTime);
             const remaining = Math.max(0, duration - elapsed);
             timerBox.textContent = remaining;
             if (remaining === 0) {{
@@ -876,6 +883,7 @@ def render_pitching(request, room, player, flash):
     </section>
     {timer_script}"""
     return HTMLResponse(layout("Pitch Invenzioni", content, in_room=True))
+
 
 
 def render_voting(request, room, player, flash):

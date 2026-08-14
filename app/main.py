@@ -953,9 +953,6 @@ def render_round_result(request, room, player, flash):
             f'<div style="display:flex; justify-content:space-between; align-items:center;">'
             f'<span style="display:flex; align-items:center; gap:10px;">{avatar_markup(p["name"])} <strong>{e(p["name"])}</strong></span>'
             f'{badge}</div>'
-            f'<div style="font-size:0.9rem; color:rgba(241,245,249,0.8); margin-top:4px;">'
-            f'🪙 Incasso Mercato: <strong>+{votes_rec} Monete</strong>{bonus_tag} &bull; Totale: <strong>{p["score"]} Monete</strong>'
-            f'</div>'
             f'</div>'
         )
 

@@ -137,44 +137,44 @@ PROBLEMI = [
 ]
 
 PAROLE_OGGETTI = [
-    "Tostapane", "Razzo", "Nonna", "Ventaglio", "Papera di gomma", "Microonde", "Supercolla", "Cactus",
-    "Spaghetti", "Casco da astronauta", "Banana", "Poltrona", "Catena della bicicletta", "Dentiera", "Trombetta",
-    "Sgabello", "Ananas", "Pattini a rotelle", "Frullatore", "Sturalavandini", "Scopa magica volante", "Ombrello",
-    "Cucchiaio di legno", "Mattoncini LEGO", "Ciambella gonfiabile", "Occhiali da sole", "Ventilatore",
-    "Macchina fotografica", "Calzino sporco", "Palla da biliardo", "Sgombro in scatola", "Pennello", "Radio",
-    "Carota", "Scatola di cartone", "Guanto da forno", "Elastico", "Ruota di scorta", "Tromba d'aria", "Sveglia",
-    "Saponetta", "Pellicola trasparente", "Mappamondo", "Sedia a dondolo", "Ventosa", "Pettine",
-    "Bottiglia di ketchup", "Martello di gomma", 
-    "Biliardino", "Lampadario di cristallo", "Mandolino", "Scolapasta", "Forchetta gigante",
-    "Fischietto", "Zaino", "Peluche", "Tappo di sughero", "Vaso",
-    "Palla di cannone", "Scatola di fiammiferi", "Grattugia", "Borraccia", "Guantoni da boxe",
-    "Cappello da mago", "Disco volante", "Molla", "Lente d'ingrandimento",
-    "Sassofono", "Cannuccia", "Carillon",
-    "Molletta da bucato", "Monopattino", "Bandiera pirata", "Boccale di birra",
-    "Slitta", "Cuscino", "Tazza da tè", "Scatola di pennarelli", "Palla da bowling",
-    "Grillo parlante", "Sciarpa di lana", "Telescopio", "Zerbino",
-    "Caffettiera", "Ferro da stiro", "Campanaccio", "Carrello della spesa",
-    "Stivale in gomma", "Termometro digitale", "Spugna",
-    "Imbuto di plastica", "Barattolo di maionese", "Formaggio grattugiato",
-    "Bastone da passeggio",
-    "Mocio lavapavimenti", "Pinza", "Pettine per gatti",
-    "Coperta", "Tavola da surf", "Pinne da sub", "Trapano",
-    "Palla da tennis",
-    "Sacco a pelo", "Tenda da campeggio", "Bussola",
-    "Barattolo di Nutella", "Biscotto al cioccolato", "Pacco di cracker", "Spremiagrumi",
-    "Forno elettrico", "Bilancia da cucina",
-    "Cavatappi", "Apriscatole", "Pelapatate", "Schiaccianoci",
-    "Berretto con pompon", "Impermeabile giallo",
-    "Stuzzicadenti", "Tovagliolo",
-    "Vassoio d'argento", "Zuccheriera", "Saliera", "Pepiera", "Ampolla d'olio", "Cestino del pane",
-    "Teiera", "Lattina di Coca-Cola", "Ghiacciolo all'amarena", "Cono gelato",
-    "Fetta di torta", "Croissant al pistacchio", "Muffin al mirtillo", "Pancake",
-    "Barattolo di miele", "Marmellata di fragole", "Tavoletta di cioccolato", "Sacchetto di caramelle",
-    "Pacco di patatine", "Busta di pop-corn",
-    "Fetta di pizza", "Piadina romagnola", "Tramezzino", "Cannolo siciliano",
-    "Chitarra", "Tamburo", "Tromba", "Violino",
-    "Pianoforte", "Batteria",
-    "Microfono", "Playstation", "Joystick", "Computer"
+    "tostapane", "razzo", "nonna", "ventaglio", "papera di gomma", "microonde", "supercolla", "cactus",
+    "spaghetti", "casco da astronauta", "banana", "poltrona", "catena della bicicletta", "dentiera", "trombetta",
+    "sgabello", "ananas", "pattini a rotelle", "frullatore", "sturalavandini", "scopa magica volante", "ombrello",
+    "cucchiaio di legno", "mattoncini lego", "ciambella gonfiabile", "occhiali da sole", "ventilatore",
+    "macchina fotografica", "calzino sporco", "palla da biliardo", "sgombro in scatola", "pennello", "radio",
+    "carota", "scatola di cartone", "guanto da forno", "elastico", "ruota di scorta", "tromba d'aria", "sveglia",
+    "saponetta", "pellicola trasparente", "mappamondo", "sedia a dondolo", "ventosa", "pettine",
+    "bottiglia di ketchup", "martello di gomma", 
+    "biliardino", "lampadario di cristallo", "mandolino", "scolapasta", "forchetta gigante",
+    "fischietto", "zaino", "peluche", "tappo di sughero", "vaso",
+    "palla di cannone", "scatola di fiammiferi", "grattugia", "borraccia", "guantoni da boxe",
+    "cappello da mago", "disco volante", "molla", "lente d'ingrandimento",
+    "sassofono", "cannuccia", "carillon",
+    "molletta da bucato", "monopattino", "bandiera pirata", "boccale di birra",
+    "slitta", "cuscino", "tazza da tè", "scatola di pennarelli", "palla da bowling",
+    "grillo parlante", "sciarpa di lana", "telescopio", "zerbino",
+    "caffettiera", "ferro da stiro", "campanaccio", "carrello della spesa",
+    "stivale in gomma", "termometro digitale", "spugna",
+    "imbuto di plastica", "barattolo di maionese", "formaggio grattugiato",
+    "bastone da passeggio",
+    "mocio lavapavimenti", "pinza", "pettine per gatti",
+    "coperta", "tavola da surf", "pinne da sub", "trapano",
+    "palla da tennis",
+    "sacco a pelo", "tenda da campeggio", "bussola",
+    "barattolo di nutella", "biscotto al cioccolato", "pacco di cracker", "spremiagrumi",
+    "forno elettrico", "bilancia da cucina",
+    "cavatappi", "apriscatole", "pelapatate", "schiaccianoci",
+    "berretto con pompon", "impermeabile giallo",
+    "stuzzicadenti", "tovagliolo",
+    "vassoio d'argento", "zuccheriera", "saliera", "pepiera", "ampolla d'olio", "cestino del pane",
+    "teiera", "lattina di coca-cola", "ghiacciolo all'amarena", "cono gelato",
+    "fetta di torta", "croissant al pistacchio", "muffin al mirtillo", "pancake",
+    "barattolo di miele", "marmellata di fragole", "tavoletta di cioccolato", "sacchetto di caramelle",
+    "pacco di patatine", "busta di pop-corn",
+    "fetta di pizza", "piadina romagnola", "tramezzino", "cannolo siciliano",
+    "chitarra", "tamburo", "tromba", "violino",
+    "pianoforte", "batteria",
+    "microfono", "playstation", "joystick", "computer"
 ]
 
 rooms = {}
@@ -483,7 +483,7 @@ def confirm_next_round_logic(room_code, player_id):
             room["pitchState"] = "preparing"
             room["pitchStartTime"] = None
 
-            # Pick new problem & 1 word
+            # Pick new problem
             room["currentProblem"] = random.choice(PROBLEMI)
             room["currentWords"] = random.sample(PAROLE_OGGETTI, 1)
             room["votes"] = {}
@@ -675,7 +675,7 @@ def avatar_markup(name):
 
 
 def render_schema(problem, words):
-    words_markup = "".join(f'<span class="word-badge">[ {e(w)} ]</span>' for w in words)
+    words_markup = "".join(f'<span class="word-badge"> {e(w)} </span>' for w in words)
     return f"""
     <div class="schema-card">
       <div class="problem-title">💡 Problema del Round</div>

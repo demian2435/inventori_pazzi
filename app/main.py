@@ -775,9 +775,9 @@ def render_home(request, flash):
       <p class="subtitle">Il party game multiplayer di invenzioni assurde e mercato spietato!</p>
       {flash_markup(flash)}
       <form action="/join" method="post">{csrf_input(token)}
-        <div style="text-align:center; margin-bottom:18px;">
-          <div id="avatar-preview" class="avatar" style="width:76px; height:76px; font-size:2.2rem; margin:0 auto 10px; border:2px dashed rgba(255,255,255,0.4); cursor:pointer; transition:all 0.2s;" title="Clicca per scegliere la foto">👤</div>
-          <button type="button" id="avatar-trigger-btn" class="button secondary" style="display:inline-block; width:auto; margin:0 auto; padding:6px 14px; font-size:0.85rem; cursor:pointer;">📷 Scegli Foto Profilo (opzionale)</button>
+        <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:18px;">
+          <div id="avatar-preview" class="avatar" style="width:76px; height:76px; font-size:2.2rem; margin-bottom:8px; border:2px dashed rgba(255,255,255,0.4); cursor:pointer; transition:all 0.2s;" title="Clicca per scegliere la foto">👤</div>
+          <button type="button" id="avatar-trigger-btn" class="button secondary" style="display:block; width:auto; margin:0; padding:6px 14px; font-size:0.85rem; cursor:pointer;">📷 Scegli Foto Profilo (opzionale)</button>
           <input id="avatar_file" type="file" accept="image/*" style="display:none;">
           <input id="avatar_data" type="hidden" name="avatar_data" value="">
         </div>
@@ -800,12 +800,29 @@ def render_home(request, flash):
       const avatarDataInput = document.getElementById('avatar_data');
       const form = nameInput ? nameInput.closest('form') : null;
 
+      function getSharedData(key) {{
+        let val = localStorage.getItem(key);
+        if (!val) {{
+          const match = document.cookie.match(new RegExp('(?:^|; )' + key + '=([^;]*)'));
+          if (match) val = decodeURIComponent(match[1]);
+        }}
+        return val || '';
+      }}
+
+      function setSharedData(key, val) {{
+        if (!val) return;
+        try {{ localStorage.setItem(key, val); }} catch(e) {{}}
+        try {{
+          document.cookie = key + '=' + encodeURIComponent(val) + '; path=/; max-age=31536000; SameSite=Lax';
+        }} catch(e) {{}}
+      }}
+
       if (nameInput) {{
-        const savedName = localStorage.getItem('inventore_pazzo_name');
+        const savedName = getSharedData('d2435_games_username');
         if (savedName) nameInput.value = savedName;
       }}
 
-      const savedAvatar = localStorage.getItem('saved_player_avatar');
+      const savedAvatar = getSharedData('d2435_games_avatar');
       if (savedAvatar && avatarDataInput && avatarPreview) {{
         avatarDataInput.value = savedAvatar;
         avatarPreview.innerHTML = '<img src="' + savedAvatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">';
@@ -847,6 +864,7 @@ def render_home(request, flash):
                 avatarPreview.innerHTML = '<img src="' + compressedDataUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">';
                 avatarPreview.style.border = '2px solid #fbbf24';
               }}
+              setSharedData('d2435_games_avatar', compressedDataUrl);
               localStorage.setItem('saved_player_avatar', compressedDataUrl);
             }};
             img.src = event.target.result;
@@ -858,7 +876,8 @@ def render_home(request, flash):
       if (form) {{
         form.addEventListener('submit', function() {{
           if (nameInput && nameInput.value.trim()) {{
-            localStorage.setItem('inventore_pazzo_name', nameInput.value.trim());
+            const trimmedName = nameInput.value.trim();
+            setSharedData('d2435_games_username', trimmedName);
           }}
         }});
       }}

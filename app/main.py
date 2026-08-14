@@ -219,6 +219,56 @@ def generate_room_code():
             return code
 
 
+def generate_balanced_schedule(players: list) -> list[list]:
+    """
+    Genera una matrice di turni bilanciata tramite Quadrato Latino Bilanciato (Algoritmo di Williams).
+    - Riga base: [0, 1, N-1, 2, N-2, 3, N-3, ...]
+    - Offset circolare per N righe: row[r] = [(val + r) % N for val in base_row]
+    - Se N è dispari: aggiunge un secondo blocco di N righe specchiate da reversed(base_row).
+    """
+    N = len(players)
+    if N == 0:
+        return []
+
+    base_row = []
+    for i in range(N):
+        if i == 0:
+            base_row.append(0)
+        elif i % 2 == 1:
+            base_row.append((i + 1) // 2)
+        else:
+            base_row.append(N - (i // 2))
+
+    matrix_indices = []
+
+    # Primo blocco: N righe con offset circolare
+    for r in range(N):
+        row = [(val + r) % N for val in base_row]
+        matrix_indices.append(row)
+
+    # Se N è dispari, aggiungi secondo blocco di N righe da reversed(base_row)
+    if N % 2 != 0:
+        rev_base_row = list(reversed(base_row))
+        for r in range(N):
+            row = [(val + r) % N for val in rev_base_row]
+            matrix_indices.append(row)
+
+    # Mappa gli indici sugli elementi di players (o sui loro 'id' se dict)
+    schedule = []
+    for row in matrix_indices:
+        mapped_row = []
+        for idx in row:
+            p = players[idx]
+            if isinstance(p, dict) and "id" in p:
+                mapped_row.append(p["id"])
+            else:
+                mapped_row.append(p)
+        schedule.append(mapped_row)
+
+    return schedule
+
+
+
 def join_player_logic(room_code, player_name, player_id=None):
     player_name = (player_name or "").strip()
     room_code = (room_code or "").strip().upper()
@@ -238,6 +288,7 @@ def join_player_logic(room_code, player_name, player_id=None):
             "totalRounds": 3,
             "firstSpeakerIndex": 0,
             "speakerOrder": [],
+            "schedule": [],
             "currentSpeakerIndex": 0,
             "pitchState": "preparing",  # 'preparing', 'pitching'
             "pitchStartTime": None,
@@ -286,7 +337,8 @@ def start_game_logic(room_code, player_id):
     num_players = len(room["players"])
     room["status"] = "pitching"
     room["roundNumber"] = 1
-    room["totalRounds"] = num_players
+    room["schedule"] = generate_balanced_schedule(room["players"])
+    room["totalRounds"] = len(room["schedule"]) if room["schedule"] else num_players
     room["firstSpeakerIndex"] = 0
 
     # Reset scores and confirmation flags
@@ -294,8 +346,11 @@ def start_game_logic(room_code, player_id):
         p["score"] = 0
         p["confirmedNext"] = False
 
-    # Calculate initial speaker order
-    room["speakerOrder"] = [p["id"] for p in room["players"]]
+    # Calculate initial speaker order from schedule
+    if room["schedule"]:
+        room["speakerOrder"] = room["schedule"][0]
+    else:
+        room["speakerOrder"] = [p["id"] for p in room["players"]]
     room["currentSpeakerIndex"] = 0
     room["pitchState"] = "preparing"
     room["pitchStartTime"] = None
@@ -437,12 +492,13 @@ def confirm_next_round_logic(room_code, player_id):
         if room["roundNumber"] < room["totalRounds"]:
             # Advance to next round!
             room["roundNumber"] += 1
-            num_players = len(room["players"])
-            room["firstSpeakerIndex"] = (room["firstSpeakerIndex"] + 1) % num_players
-
-            # Shift speaker order so next player starts
-            idx = room["firstSpeakerIndex"]
-            room["speakerOrder"] = [room["players"][(idx + i) % num_players]["id"] for i in range(num_players)]
+            if room.get("schedule"):
+                room["speakerOrder"] = room["schedule"][(room["roundNumber"] - 1) % len(room["schedule"])]
+            else:
+                num_players = len(room["players"])
+                room["firstSpeakerIndex"] = (room["firstSpeakerIndex"] + 1) % num_players
+                idx = room["firstSpeakerIndex"]
+                room["speakerOrder"] = [room["players"][(idx + i) % num_players]["id"] for i in range(num_players)]
             room["currentSpeakerIndex"] = 0
             room["pitchState"] = "preparing"
             room["pitchStartTime"] = None
@@ -478,6 +534,7 @@ def reset_game_logic(room_code, player_id):
     room["roundNumber"] = 1
     room["firstSpeakerIndex"] = 0
     room["speakerOrder"] = []
+    room["schedule"] = []
     room["currentSpeakerIndex"] = 0
     room["pitchState"] = "preparing"
     room["pitchStartTime"] = None

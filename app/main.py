@@ -93,7 +93,7 @@ PROBLEMI = [
     "Come far smettere subito il singhiozzo?",
     "Come staccare due bicchieri di vetro incastrati l'uno nell'altro?",
     "Come togliere l'odore di aglio dalle mani dopo aver cucinato?",
-    "Come convincere un bimbo piccolo a mangiare i le verdure?",
+    "Come convincere un bimbo piccolo a mangiare le verdure?",
     "Come raccogliere le briciole dal divano senza aspirapolvere?",
     "Come raccontare una barzelletta e far ridere sempre tutti?",
     "Come spalmarsi la crema solare sulla schiena da soli senza aiuto?",
@@ -426,15 +426,20 @@ def resolve_round_votes(room):
         received = vote_counts.get(pid, 0)
         voted_for = room["votes"].get(pid)
 
+        # Winner bonus: +2 coins if won the round
+        winner_bonus = 2 if pid in winner_ids else 0
+
         # Talent Scout bonus: +1 coin if voted for a round winner
         talent_bonus = 1 if (voted_for and voted_for in winner_ids) else 0
-        total_round_coins = received + talent_bonus
+
+        total_round_coins = received + winner_bonus + talent_bonus
         p["score"] += total_round_coins
         p["confirmedNext"] = False
 
         player_details[pid] = {
             "name": p["name"],
             "votesReceived": received,
+            "winnerBonus": winner_bonus,
             "talentBonus": talent_bonus,
             "votedForName": players_map[voted_for]["name"] if voted_for in players_map else "Nessuno",
             "totalRoundCoins": total_round_coins,
@@ -653,7 +658,54 @@ def layout(title, content, in_room=False):
     </script>
     """ if in_room else ""
 
-    return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(title)} · Inventori Pazzi</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>{CSS}</style></head><body><main>{content}</main>{sse_script}</body></html>"""
+    leave_modal = """
+    <div id="leave-modal-overlay" style="display:none; position:fixed; inset:0; z-index:999999; background:rgba(15, 23, 42, 0.85); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+      <div style="background:#1e293b; border:2px solid rgba(239, 68, 68, 0.4); border-radius:24px; padding:28px; max-width:420px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+        <div style="font-size:3rem; margin-bottom:12px;">🚪</div>
+        <h2 style="color:#f8fafc; margin-top:0; margin-bottom:8px; font-size:1.6rem;">Vuoi uscire davvero?</h2>
+        <p style="color:#cbd5e1; font-size:0.95rem; line-height:1.5; margin-bottom:24px;">Se lasci la stanza ora uscirai dalla partita in corso.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <button id="leave-cancel-btn" type="button" class="button secondary" style="margin-top:0;">Annulla</button>
+          <button id="leave-confirm-btn" type="button" class="button danger" style="margin-top:0;">Sì, Esci</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function() {
+      let pendingForm = null;
+      const overlay = document.getElementById('leave-modal-overlay');
+      const cancelBtn = document.getElementById('leave-cancel-btn');
+      const confirmBtn = document.getElementById('leave-confirm-btn');
+
+      document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (form && form.getAttribute('action') === '/leave' && !form.dataset.confirmed) {
+          e.preventDefault();
+          pendingForm = form;
+          if (overlay) overlay.style.display = 'flex';
+        }
+      });
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+          if (overlay) overlay.style.display = 'none';
+          pendingForm = null;
+        });
+      }
+
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+          if (pendingForm) {
+            pendingForm.dataset.confirmed = 'true';
+            pendingForm.submit();
+          }
+        });
+      }
+    })();
+    </script>
+    """ if in_room else ""
+
+    return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(title)} · Inventori Pazzi</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>{CSS}</style></head><body><main>{content}</main>{sse_script}{leave_modal}</body></html>"""
 
 
 def flash_markup(flash):
@@ -906,8 +958,9 @@ def render_voting(request, room, player, flash):
         <div class="progress"><span style="width:{pct}%"></span></div>
       </div>
 
-      <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); padding:14px; border-radius:14px; margin-bottom:16px;">
-        ⭐ <strong>Bonus Talent Scout:</strong> Se voti l'inventore che vince il round, guadagni +1 moneta bonus nel tuo salvadanaio!
+      <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); padding:14px; border-radius:14px; margin-bottom:16px; font-size:0.95rem; line-height:1.5;">
+        👑 <strong>Bonus Invenzione Vincitrice:</strong> Se la tua invenzione vince il round, guadagni +2 monete bonus!<br>
+        ⭐ <strong>Bonus Talent Scout:</strong> Se voti l'inventore che vince il round, guadagni +1 moneta bonus!
       </div>
 
       <h3>🗳️ Seleziona l'Invenzione Migliore</h3>
@@ -929,7 +982,35 @@ def render_round_result(request, room, player, flash):
     player_details = result.get("playerDetails", {})
     my_details = player_details.get(player["id"], {})
 
-    # Confirmation Status List
+    my_votes_rec = my_details.get("votesReceived", 0)
+    my_w_bonus = my_details.get("winnerBonus", 0)
+    my_t_bonus = my_details.get("talentBonus", 0)
+    my_total_round = my_details.get("totalRoundCoins", 0)
+
+    my_bonus_items = []
+    if my_w_bonus > 0:
+        my_bonus_items.append('<div style="color:#fbbf24;">👑 <strong>Bonus Invenzione Vincitrice:</strong> +2 Monete</div>')
+    if my_t_bonus > 0:
+        my_bonus_items.append('<div style="color:#10b981;">⭐ <strong>Bonus Talent Scout:</strong> +1 Moneta</div>')
+
+    my_bonus_html = "".join(my_bonus_items)
+
+    my_round_card = f"""
+    <div style="background:rgba(30, 41, 59, 0.85); border: 2px solid rgba(245, 158, 11, 0.4); border-radius: 18px; padding: 18px; margin: 18px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <h3 style="margin-top:0; color:#fbbf24; display:flex; align-items:center; gap:8px;">
+        🪙 Il Tuo Incasso del Round
+      </h3>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:1rem;">
+        <div>🗳️ Voti ricevuti dalla tua invenzione: <strong>+{my_votes_rec} Monete</strong></div>
+        {my_bonus_html}
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); font-size:1.15rem; font-weight:800; color:#10b981; display:flex; justify-content:space-between;">
+          <span>Totale Guadagnato nel Round:</span>
+          <span>+{my_total_round} Monete</span>
+        </div>
+      </div>
+    </div>"""
+
+    # Confirmation Status List (Private: names + ready status only)
     players_status_markup = []
     ready_count = 0
     total_players = len(room["players"])
@@ -941,12 +1022,6 @@ def render_round_result(request, room, player, flash):
             badge = '<span class="badge" style="background:#10b981; color:#fff;">✅ PRONTO</span>'
         else:
             badge = '<span class="badge" style="background:rgba(255,255,255,0.15); color:#cbd5e1;">⏳ In Attesa</span>'
-
-        details = player_details.get(p["id"], {})
-        votes_rec = details.get("votesReceived", 0)
-        t_bonus = details.get("talentBonus", 0)
-
-        bonus_tag = ' <span style="color:#10b981; font-weight:bold;">(+1 ⭐ Talent Scout)</span>' if t_bonus > 0 else ""
 
         players_status_markup.append(
             f'<div class="result-card">'
@@ -970,10 +1045,6 @@ def render_round_result(request, room, player, flash):
           <button class="success" type="submit" style="font-size:1.2rem;">{next_label}</button>
         </form>"""
 
-    my_bonus_msg = ""
-    if my_details.get("talentBonus", 0) > 0:
-        my_bonus_msg = '<div class="notice" style="margin:14px 0;">⭐ <strong>Complimenti!</strong> Hai votato il vincitore e ottenuto +1 Moneta col Bonus Talent Scout!</div>'
-
     content = f"""
     <section class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -989,9 +1060,9 @@ def render_round_result(request, room, player, flash):
         <div style="font-size:1.6rem; font-weight:900; color:#ffffff; margin-top:4px;">{e(winner_str)}</div>
       </div>
 
-      {my_bonus_msg}
+      {my_round_card}
 
-      <h3>📊 Resoconto Incassi ed Avanzamento ({ready_count}/{total_players} Pronti)</h3>
+      <h3>📊 Stato Avanzamento Inventori ({ready_count}/{total_players} Pronti)</h3>
       <div>{"".join(players_status_markup)}</div>
 
       {action_btn}
@@ -1010,10 +1081,14 @@ def render_game_over(request, room, player, flash):
     standings = game_res.get("standings", [])
     is_tie = game_res.get("isTie", False)
 
-    banner_title = f"{e(winner_names.upper())} HA VINTO!" if not is_tie else f"VITTORIA A PARITÀ TRA {e(winner_names.upper())}!"
+    banner_title = f"{e(winner_names.upper())} HA VINTO!" if not is_tie else f"VITTORIA A PARIMERITO TRA {e(winner_names.upper())}!"
+
+    # Calculate unique scores ordered descending so tied scores receive identical medals
+    scores = sorted(list(set(p["score"] for p in standings)), reverse=True)
 
     standings_markup = []
-    for rank, p in enumerate(standings, 1):
+    for p in standings:
+        rank = scores.index(p["score"]) + 1 if p["score"] in scores else len(standings)
         medal = "🥇" if rank == 1 else ("🥈" if rank == 2 else ("🥉" if rank == 3 else f"#{rank}"))
         standings_markup.append(
             f'<div class="player" style="padding:14px 18px; margin-bottom:8px;">'
@@ -1036,7 +1111,59 @@ def render_game_over(request, room, player, flash):
           <button class="button secondary" type="submit">Torna alla Lobby</button>
         </form>"""
 
+    hype_countdown = """
+    <div id="hype-countdown-overlay" style="position:fixed; inset:0; z-index:99999; background:linear-gradient(135deg, #0f172a, #1e1b4b, #172554); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; transition:opacity 0.6s ease, visibility 0.6s ease;">
+      <div style="font-size:1.1rem; font-weight:800; color:#fbbf24; margin-bottom:16px; text-transform:uppercase; letter-spacing:3px;">
+        🏆 RIVELAZIONE CLASSIFICA FINALE 🏆
+      </div>
+      <div id="hype-count" style="font-size:clamp(6rem, 25vw, 12rem); font-weight:900; color:#f59e0b; text-shadow:0 0 50px rgba(245,158,11,0.7); line-height:1; transform:scale(1); transition:transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        3
+      </div>
+      <p id="hype-subtext" style="font-size:1.3rem; color:#cbd5e1; margin-top:24px; font-weight:700; letter-spacing:1px;">
+        Chi sarà il più grande Inventore Pazzo?
+      </p>
+    </div>
+    <script>
+    (function() {
+      const overlay = document.getElementById('hype-countdown-overlay');
+      const countEl = document.getElementById('hype-count');
+      const subEl = document.getElementById('hype-subtext');
+      if (!overlay || !countEl) return;
+
+      function pulse() {
+        countEl.style.transform = 'scale(1.35)';
+        setTimeout(() => { countEl.style.transform = 'scale(1)'; }, 180);
+      }
+
+      pulse();
+      let step = 3;
+      const timer = setInterval(function() {
+        step--;
+        if (step === 2) {
+          countEl.textContent = '2';
+          subEl.textContent = 'I punti sono stati conteggiati...';
+          pulse();
+        } else if (step === 1) {
+          countEl.textContent = '1';
+          subEl.textContent = 'E il vincitore è...';
+          pulse();
+        } else if (step === 0) {
+          countEl.textContent = '🥁';
+          subEl.textContent = 'Rullo di tamburi!';
+          pulse();
+        } else {
+          clearInterval(timer);
+          overlay.style.opacity = '0';
+          overlay.style.visibility = 'hidden';
+          setTimeout(() => { overlay.remove(); }, 600);
+        }
+      }, 1000);
+    })();
+    </script>
+    """
+
     content = f"""
+    {hype_countdown}
     <section class="card">
       <div class="winner-banner">
         <div style="font-size:3rem; margin-bottom:8px;">🏆</div>

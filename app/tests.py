@@ -257,21 +257,23 @@ class TestVotingLogic(unittest.TestCase):
         self.assertEqual(res["roundWinnerIds"], [self.p2])
         self.assertEqual(res["maxVotes"], 2)
 
-        # Check player details:
-        # p2 received 2 votes + 0 bonus = 2 coins (total 2)
-        # p1 received 0 votes + 1 talent bonus (voted for p2, the winner) = 1 coin (total 1)
-        # p3 received 1 vote + 0 bonus = 1 coin (total 1)
+        # p3 received 1 vote + 1 talent bonus (voted for p2, the winner) = 2 coins
         details = res["playerDetails"]
         self.assertEqual(details[self.p2]["votesReceived"], 2)
+        self.assertEqual(details[self.p2]["winnerBonus"], 2)
         self.assertEqual(details[self.p2]["talentBonus"], 0)
+        self.assertEqual(details[self.p2]["totalRoundCoins"], 4)
+
+        self.assertEqual(details[self.p1]["winnerBonus"], 0)
         self.assertEqual(details[self.p1]["talentBonus"], 1)
+        self.assertEqual(details[self.p1]["totalRoundCoins"], 1)
+
         self.assertEqual(details[self.p3]["votesReceived"], 1)
+        self.assertEqual(details[self.p3]["winnerBonus"], 0)
+        self.assertEqual(details[self.p3]["talentBonus"], 1)
+        self.assertEqual(details[self.p3]["totalRoundCoins"], 2)
 
     def test_vote_resolution_tie(self):
-        # p1 votes for p2
-        # p2 votes for p1
-        # p3 votes for p1 -> tie if p3 votes for p2? No, p1 gets 2, p2 gets 1.
-        # For a tie: p1 votes p2, p2 votes p3, p3 votes p1 -> each gets 1 vote (max 1 vote)
         vote_logic(self.code, self.p1, self.p2)
         vote_logic(self.code, self.p2, self.p3)
         vote_logic(self.code, self.p3, self.p1)
@@ -279,9 +281,11 @@ class TestVotingLogic(unittest.TestCase):
         res = self.room["lastRoundResult"]
         self.assertEqual(set(res["roundWinnerIds"]), {self.p1, self.p2, self.p3})
         self.assertEqual(res["maxVotes"], 1)
-        # Everyone voted for a winner, so everyone gets 1 received + 1 bonus = 2 coins
+        # Everyone voted for a winner, so everyone gets 1 received + 2 winner bonus + 1 talent bonus = 4 coins
         for pid in [self.p1, self.p2, self.p3]:
+            self.assertEqual(res["playerDetails"][pid]["winnerBonus"], 2)
             self.assertEqual(res["playerDetails"][pid]["talentBonus"], 1)
+            self.assertEqual(res["playerDetails"][pid]["totalRoundCoins"], 4)
 
 
 class TestConfirmNextRoundAndEndGame(unittest.TestCase):
@@ -333,6 +337,27 @@ class TestConfirmNextRoundAndEndGame(unittest.TestCase):
         self.assertIsNotNone(game_res)
         self.assertTrue(len(game_res["topWinners"]) > 0)
         self.assertEqual(len(game_res["standings"]), 4)
+
+    def test_render_game_over_tie_gold_medals(self):
+        from main import render_game_over, Request
+        # Create room with 2 players tied for 1st place
+        self.room["status"] = "ended"
+        self.room["players"][0]["score"] = 10
+        self.room["players"][1]["score"] = 10
+        self.room["players"][2]["score"] = 5
+        self.room["lastGameResult"] = {
+            "topWinners": [self.room["players"][0], self.room["players"][1]],
+            "winnerNames": "Player 1, Player 2",
+            "isTie": True,
+            "standings": self.room["players"],
+        }
+        mock_request = Request({"type": "http", "session": {"csrf_token": "token", "room_code": self.code, "player_id": self.p1}})
+        resp = render_game_over(mock_request, self.room, self.room["players"][0], None)
+        body = resp.body.decode("utf-8")
+        # Count gold medal occurrences (should be 2 for tied 1st place)
+        self.assertEqual(body.count("🥇"), 2)
+        # 2nd place score 5 should get silver medal 🥈
+        self.assertEqual(body.count("🥈"), 1)
 
 
 class TestResetGameLogic(unittest.TestCase):

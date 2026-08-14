@@ -1,9 +1,6 @@
 USER=d2435
 SERVER=gcp2435
 
-install:
-	@pip install -r app/requirements.txt
-
 run:
 	@cd app && python main.py
 
@@ -16,6 +13,3 @@ push:
 
 test:
 	@cd app && python -m unittest discover -s . -p 'tests.py'
-
-test-docker:
-	@docker run --rm -v $(shell pwd)/app:/app -w /app python:3.13-slim sh -c "pip install -r requirements.txt > /dev/null 2>&1 && python -m unittest discover -s . -p 'tests.py'"

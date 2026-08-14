@@ -169,7 +169,7 @@ class TestStartGameLogic(unittest.TestCase):
         self.assertEqual(room["totalRounds"], 6)
         self.assertEqual(room["speakerOrder"], room["schedule"][0])
         self.assertTrue(len(room["currentProblem"]) > 0)
-        self.assertEqual(len(room["currentWords"]), 3)
+        self.assertEqual(len(room["currentWords"]), 1)
 
 
 class TestPitchPhaseLogic(unittest.TestCase):

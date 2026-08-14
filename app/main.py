@@ -358,9 +358,9 @@ def start_game_logic(room_code, player_id):
     room["lastRoundResult"] = None
     room["lastGameResult"] = None
 
-    # Pick random problem and 3 distinct random words
+    # Pick random problem and 1 random word
     room["currentProblem"] = random.choice(PROBLEMI)
-    room["currentWords"] = random.sample(PAROLE_OGGETTI, 3)
+    room["currentWords"] = random.sample(PAROLE_OGGETTI, 1)
 
     return room, None
 
@@ -503,9 +503,9 @@ def confirm_next_round_logic(room_code, player_id):
             room["pitchState"] = "preparing"
             room["pitchStartTime"] = None
 
-            # Pick new problem & 3 words
+            # Pick new problem & 1 word
             room["currentProblem"] = random.choice(PROBLEMI)
-            room["currentWords"] = random.sample(PAROLE_OGGETTI, 3)
+            room["currentWords"] = random.sample(PAROLE_OGGETTI, 1)
             room["votes"] = {}
             room["status"] = "pitching"
         else:
@@ -700,7 +700,7 @@ def render_schema(problem, words):
     <div class="schema-card">
       <div class="problem-title">💡 Problema del Round</div>
       <div class="problem-box">"{e(problem)}"</div>
-      <div class="problem-title" style="margin-top:14px;">🧩 3 Parole Obbligatorie nell'Invenzione</div>
+      <div class="problem-title" style="margin-top:14px;">🧩 Parola Obbligatoria nell'Invenzione</div>
       <div class="words-container">{words_markup}</div>
     </div>"""
 
